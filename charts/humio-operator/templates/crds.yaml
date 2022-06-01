@@ -1870,6 +1870,14 @@ spec:
                     format: int32
                     type: integer
                 type: object
+              dataVolumePersistentVolumeClaimPolicy:
+                properties:
+                  reclaimType:
+                    enum:
+                    - None
+                    - OnNodeDelete
+                    type: string
+                type: object
               dataVolumePersistentVolumeClaimSpecTemplate:
                 description: DataVolumePersistentVolumeClaimSpecTemplate is the PersistentVolumeClaimSpec
                   that will be used with for the humio data volume. This conflicts
@@ -6952,6 +6960,14 @@ spec:
                                 1. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes'
                               format: int32
                               type: integer
+                          type: object
+                        dataVolumePersistentVolumeClaimPolicy:
+                          properties:
+                            reclaimType:
+                              enum:
+                              - None
+                              - OnNodeDelete
+                              type: string
                           type: object
                         dataVolumePersistentVolumeClaimSpecTemplate:
                           description: DataVolumePersistentVolumeClaimSpecTemplate

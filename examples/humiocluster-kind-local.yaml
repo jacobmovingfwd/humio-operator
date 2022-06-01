@@ -21,6 +21,8 @@ spec:
     requests:
       cpu: "1"
       memory: 2Gi
+  dataVolumePersistentVolumeClaimPolicy:
+    reclaimType: OnNodeDelete
   dataVolumePersistentVolumeClaimSpecTemplate:
     storageClassName: standard
     accessModes: [ReadWriteOnce]

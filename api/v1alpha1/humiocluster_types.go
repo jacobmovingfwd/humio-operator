@@ -41,6 +41,8 @@ const (
 	// HumioClusterUpdateStrategyRollingUpdateBestEffort is the update strategy where the operator will evaluate the Humio version change and determine if the
 	// Humio pods can be updated in a rolling fashion or if they must be replaced at the same time
 	HumioClusterUpdateStrategyRollingUpdateBestEffort = "RollingUpdateBestEffort"
+
+	HumioPersistentVolumeReclaimTypeOnNodeDelete = "OnNodeDelete"
 )
 
 // HumioClusterSpec defines the desired state of HumioCluster
@@ -97,6 +99,8 @@ type HumioNodeSpec struct {
 
 	// DataVolumePersistentVolumeClaimSpecTemplate is the PersistentVolumeClaimSpec that will be used with for the humio data volume. This conflicts with DataVolumeSource.
 	DataVolumePersistentVolumeClaimSpecTemplate corev1.PersistentVolumeClaimSpec `json:"dataVolumePersistentVolumeClaimSpecTemplate,omitempty"`
+
+	DataVolumePersistentVolumeClaimPolicy HumioPersistentVolumeClaimPolicy `json:"dataVolumePersistentVolumeClaimPolicy,omitempty"`
 
 	// DataVolumeSource is the volume that is mounted on the humio pods. This conflicts with DataVolumePersistentVolumeClaimSpecTemplate.
 	DataVolumeSource corev1.VolumeSource `json:"dataVolumeSource,omitempty"`
@@ -299,6 +303,13 @@ type HumioClusterLicenseSpec struct {
 type HumioImageSource struct {
 	// ConfigMapRef contains the reference to the configmap name and key containing the image value
 	ConfigMapRef *corev1.ConfigMapKeySelector `json:"configMapRef,omitempty"`
+}
+
+type HumioPersistentVolumeReclaimType string
+
+type HumioPersistentVolumeClaimPolicy struct {
+	// +kubebuilder:validation:Enum=None;OnNodeDelete
+	ReclaimType HumioPersistentVolumeReclaimType `json:"reclaimType,omitempty"`
 }
 
 // HumioPodStatusList holds the list of HumioPodStatus types

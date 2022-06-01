@@ -24,6 +24,8 @@ import (
 	"strings"
 	"time"
 
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	humioapi "github.com/humio/cli/api"
 	"github.com/humio/humio-operator/pkg/helpers"
 	"github.com/humio/humio-operator/pkg/kubernetes"
@@ -354,6 +356,13 @@ func (r *HumioClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request
 				return r.updateStatus(r.Client.Status(), hc, statusOptions().
 					withMessage(err.Error()))
 			}
+		}
+	}
+
+	for _, pool := range humioNodePools {
+		if err = r.ensurePvcOwnerReference(ctx, hc, pool); err != nil {
+			return r.updateStatus(r.Client.Status(), hc, statusOptions().
+				withMessage(err.Error()))
 		}
 	}
 
@@ -1441,6 +1450,69 @@ func (r *HumioClusterReconciler) ensurePvcLabels(ctx context.Context, hnp *Humio
 	if err := r.Update(ctx, &pvc); err != nil {
 		return r.logErrorAndReturn(err, fmt.Sprintf("failed to update labels on pvc %s", pod.Name))
 	}
+	return nil
+}
+
+func (r *HumioClusterReconciler) ensurePvcOwnerReference(ctx context.Context, hc *humiov1alpha1.HumioCluster, hnp *HumioNodePool) error {
+	if hc.Spec.DataVolumePersistentVolumeClaimPolicy.ReclaimType != humiov1alpha1.HumioPersistentVolumeReclaimTypeOnNodeDelete {
+		return nil
+	}
+
+	r.Log.Info("ensuring pvc owner references")
+	foundPodList, err := kubernetes.ListPods(ctx, r, hnp.GetNamespace(), hnp.GetNodePoolLabels())
+	if err != nil {
+		return r.logErrorAndReturn(err, "failed to list pods")
+	}
+
+	pvcList, err := r.pvcList(ctx, hnp)
+	if err != nil {
+		return r.logErrorAndReturn(err, "failed to list pvcs to assign labels")
+	}
+
+	for _, pod := range foundPodList {
+		r.ensurePvcOwnerReferenceForPod(ctx, pod, pvcList)
+	}
+
+	return nil
+}
+
+func (r *HumioClusterReconciler) ensurePvcOwnerReferenceForPod(ctx context.Context, pod corev1.Pod, pvcList []corev1.PersistentVolumeClaim) error {
+	pvc, err := FindPvcForPod(pvcList, pod)
+	if err != nil {
+		return r.logErrorAndReturn(err, "failed to get pvc for pod to assign owner reference")
+	}
+	for _, ownerReference := range pvc.OwnerReferences {
+		if ownerReference.Kind == "Node" {
+			r.Log.Info(fmt.Sprintf("existing node owner reference for pvc %s. skipping", pvc.Name))
+			return nil
+		}
+	}
+	if pvc.Status.Phase != corev1.ClaimBound {
+		r.Log.Info(fmt.Sprintf("pvc phase not bound. skipping owner reference for pvc %s", pvc.Name))
+		return nil
+	}
+
+	nodeForPvc, err := kubernetes.GetNode(ctx, r.Client, pod.Spec.NodeName)
+	if err != nil {
+		return r.logErrorAndReturn(err, fmt.Sprintf("could not set owner reference, unable to find node for "+
+			"pvc %s using node name %s", pvc.Name, pod.Spec.NodeName))
+	}
+	ownerReferences := pvc.OwnerReferences
+	ownerReferences = append(ownerReferences, v1.OwnerReference{
+		Name:               nodeForPvc.Name,
+		APIVersion:         "v1",
+		Kind:               "Node",
+		Controller:         helpers.BoolPtr(false),
+		BlockOwnerDeletion: helpers.BoolPtr(false),
+		UID:                nodeForPvc.UID,
+	})
+	pvc.SetOwnerReferences(ownerReferences)
+
+	if err := r.Update(ctx, &pvc); err != nil {
+		return r.logErrorAndReturn(err, fmt.Sprintf("failed to update owner reference on pvc %s", pvc.Name))
+	}
+	r.Log.Info(fmt.Sprintf("updated owner references for pvc %s", pvc.Name))
+
 	return nil
 }
 
