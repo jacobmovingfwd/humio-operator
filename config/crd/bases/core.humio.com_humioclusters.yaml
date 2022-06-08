@@ -13558,6 +13558,8 @@ spec:
                   properties:
                     nodeId:
                       type: integer
+                    nodeName:
+                      type: string
                     podName:
                       type: string
                     pvcName:

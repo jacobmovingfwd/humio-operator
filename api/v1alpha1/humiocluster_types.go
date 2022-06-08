@@ -317,9 +317,10 @@ type HumioPodStatusList []HumioPodStatus
 
 // HumioPodStatus shows the status of individual humio pods
 type HumioPodStatus struct {
-	PodName string `json:"podName,omitempty"`
-	PvcName string `json:"pvcName,omitempty"`
-	NodeId  int    `json:"nodeId,omitempty"`
+	PodName  string `json:"podName,omitempty"`
+	PvcName  string `json:"pvcName,omitempty"`
+	NodeId   int    `json:"nodeId,omitempty"`
+	NodeName string `json:"nodeName,omitempty"`
 }
 
 // HumioLicenseStatus shows the status of Humio license
